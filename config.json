@@ -1,0 +1,25 @@
+{
+  "baseDir" : "/home/david/DEV",
+  "projectName": "Alpha",
+  "structure": ["backend", "frontend"],
+  "backend": {
+    "structure": ["controller", "data", "mapper", "route"],
+    "dependencies": ["express", "cookie-parser", "pg"],
+    "devDependencies": ["concurrently", "@types/cookie-parser", "@types/express", "ts-node", "typescript", "@types/pg"],
+    "useTypescript": true,
+    "entryPoint": "server.ts",
+    "useDocker": true
+  },
+  "frontend": {
+    "framework" : "react",
+    "frameworkCSS" : "tailwind"       
+  },
+  "database" : {
+    "type" : "pg",
+    "name" : "database",
+    "PG_URL" : "postgres://root:root@database:5432/mydb",
+    "POSTGRES_USER" : "root",
+    "POSTGRES_PASSWORD" : "root",  
+    "POSTGRES_DB" : "mydb"
+  }
+}
