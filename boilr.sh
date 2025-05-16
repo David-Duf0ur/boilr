@@ -1,29 +1,34 @@
 #!/bin/bash
-
+                            
 clear
 
-cat <<'EOF'
+                                                
+cat << "EOF"
+                                                
+██████╗  ██████╗ ██╗██╗     ██████╗ 
+██╔══██╗██╔═══██╗██║██║     ██╔══██╗
+██████╔╝██║   ██║██║██║     ██████╔╝
+██╔══██╗██║   ██║██║██║     ██╔══██╗
+██████╔╝╚██████╔╝██║███████╗██║  ██║
+╚═════╝  ╚═════╝ ╚═╝╚══════╝╚═╝  ╚═╝
+────────────────────────────────────────────
+ __   ___              __     __   ___ 
+|  \ |__  \  / | |\ | /__` | |  \ |__  
+|__/ |___  \/  | | \| .__/ | |__/ |___         
+                                                
+────────────────────────────────────────────
+📛 Nom       : boilr.sh
+🧑 Auteur    : David Dufour
+📅 Date      : 16 Mai 2025
+🧽 Objet     : Generer une app fullstack 💡
+🛠️ Usage     : ./boilr.sh --projectName
+⚙️ Dépend    : bash, jq
+🚀 Version   : 1.0.0
+────────────────────────────────────────────
 
-__/\\\\\\\\\\\\\________________________/\\\\\\_____/\\\\_______________        
- _\/\\\/////////\\\_____________________\////\\\____\///\\_______________       
-  _\/\\\_______\/\\\________________/\\\____\/\\\_____/\\/________________      
-   _\/\\\\\\\\\\\\\\______/\\\\\____\///_____\/\\\____\//_____/\\/\\\\\\\__     
-    _\/\\\/////////\\\___/\\\///\\\___/\\\____\/\\\___________\/\\\/////\\\_    
-     _\/\\\_______\/\\\__/\\\__\//\\\_\/\\\____\/\\\___________\/\\\___\///__   
-      _\/\\\_______\/\\\_\//\\\__/\\\__\/\\\____\/\\\___________\/\\\_________  
-       _\/\\\\\\\\\\\\\/___\///\\\\\/___\/\\\__/\\\\\\\\\________\/\\\_________ 
-        _\/////////////_______\/////_____\///__\/////////_________\///__________ 
 
-*********************************************************************************
- _           ___  _____   _____ _  _ ___ ___ ___  ___         ___ __ ___ ___ 
-| |__ _  _  |   \| __\ \ / /_ _| \| / __|_ _|   \| __|  ___  |_  )  \_  ) __|
-| '_ \ || | | |) | _| \ V / | || .` \__ \| || |) | _|  |___|  / / () / /|__ \
-|_.__/\_, | |___/|___| \_/ |___|_|\_|___/___|___/|___|       /___\__/___|___/
-      |__/                                                                   
+EOF
 
-*********************************************************************************
-
-EOF                                 
 
 progress_bar() {
   local message=$1
@@ -37,14 +42,46 @@ progress_bar() {
   done
   echo "] ✅"
 }
-                                                                 
-
+ 
 CONFIG_FILE="config.json"
+RAW_NAME="$1"
+PROJECT_NAME="${RAW_NAME#--}"
 
 # Vérification si le fichier de config existe bien
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "Fichier de configuration $CONFIG_FILE introuvable."
   exit 1
+fi
+
+# Vérifie qu'un nom de projet est fourni
+if [ -z "$1" ]; then
+  echo "❌ Utilisation : bash boilr.sh --YourProjectName"
+  exit 1
+fi
+
+if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "❌ Nom de projet invalide : uniquement lettres, chiffres, tirets ou underscores"
+  exit 1
+fi
+
+# ajout du nom de projet dans le fichier de param
+jq --arg name "$PROJECT_NAME" '.projectName = $name' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+
+# Vérification des prérequis obligatoire
+PREREQUIS=$(jq -r '.prerequis[]' "$CONFIG_FILE")
+
+for cmd in $PREREQUIS; do
+  if ! command -v $cmd &> /dev/null; then
+    echo "❌ $cmd non installé"
+    MISSING=true  
+  fi
+done
+
+if [ "$MISSING" = true ]; then
+  echo "⚠️ Des outils manquent. Veuillez installer les dépendances listées dans la section Prérequis."
+  exit 1
+else
+  echo "✅ Environnement prêt"
 fi
 
 # Création des variables nécessaires à la création du projet
@@ -72,8 +109,8 @@ progress_bar "Création de la structure"
 
 # Si le dossier backend est présent
 if echo "$STRUCTURE" | grep -q "backend"; then
-  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$BASEDIR/Boilr/$CONFIG_FILE")
-  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$BASEDIR/Boilr/$CONFIG_FILE")
+  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$BASEDIR/boilr/$CONFIG_FILE")
+  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$BASEDIR/boilr/$CONFIG_FILE")
 
   cd backend || exit
   npm init -y > /dev/null
@@ -86,7 +123,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Installation des dépendances"
 
   # Si Typescript est utilisé
-  if jq -e '.backend.useTypescript' "$BASEDIR/Boilr/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useTypescript' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
     npm install -D typescript ts-node > /dev/null
     npx tsc --init > /dev/null
 
@@ -103,7 +140,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Installation des dépendances de développement"
 
   # Création de la structure backend
-  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE")
+  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE")
 
   for folder in $BACKEND_UNDER_FOLDER; do
     mkdir -p "$folder"
@@ -115,7 +152,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Mise en place de la structure dossier"
 
   # Si route existe, créer route.ts
-  if jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE" | grep -q "route"; then
+  if jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE" | grep -q "route"; then
     cat <<EOL > route/route.ts
 import { Router } from "express";
 import { client } from "../data/data.js";
@@ -132,7 +169,7 @@ EOL
   fi
 
   # Création du fichier server.ts
-  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$BASEDIR/Boilr/$CONFIG_FILE")
+  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$BASEDIR/boilr/$CONFIG_FILE")
 
   cat <<EOL > "$ENTRY_FILE"
 import express from "express";
@@ -152,12 +189,12 @@ app.listen(PORT, () => {
 EOL
  
   # Si data est dans la structure backend
-  if jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE" | grep -q "data"; then
+  if jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE" | grep -q "data"; then
     cat <<EOL > data/data.ts
 import pg from "pg";
 const { Client } = pg;
 
-const client = new Client("$(jq -r '.database.PG_URL' "$BASEDIR/Boilr/$CONFIG_FILE")");
+const client = new Client("$(jq -r '.database.PG_URL' "$BASEDIR/boilr/$CONFIG_FILE")");
 
 async function connectDB() {
   try {
@@ -205,7 +242,7 @@ EOL
   fi
 
   # Si Docker est activé
-  if jq -e '.backend.useDocker' "$BASEDIR/Boilr/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useDocker' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
   
     cat <<EOL > Dockerfile
 FROM node:22-alpine
@@ -218,8 +255,8 @@ EXPOSE 3000
 CMD [ "npm", "run", "dev" ]
 EOL
 
-  # Création du fichier server.ts
-  DATABASE_NAME=$(jq -r '.database.name' "$BASEDIR/Boilr/$CONFIG_FILE")
+  # Création du fichier docker-compose
+  DATABASE_NAME=$(jq -r '.database.name' "$BASEDIR/boilr/$CONFIG_FILE")
 
     cat <<EOL > ../docker-compose.yml
 services:
@@ -235,7 +272,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - PG_URL=$(jq -r '.database.PG_URL' "$BASEDIR/Boilr/$CONFIG_FILE")
+      - PG_URL=$(jq -r '.database.PG_URL' "$BASEDIR/boilr/$CONFIG_FILE")
     depends_on:
       - $DATABASE_NAME
 
@@ -243,9 +280,9 @@ services:
     image: postgres:17.2-alpine
     container_name: $DATABASE_NAME
     environment:
-      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$BASEDIR/Boilr/$CONFIG_FILE")
-      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$BASEDIR/Boilr/$CONFIG_FILE")
-      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$BASEDIR/Boilr/$CONFIG_FILE")
+      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$BASEDIR/boilr/$CONFIG_FILE")
+      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$BASEDIR/boilr/$CONFIG_FILE")
+      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$BASEDIR/boilr/$CONFIG_FILE")
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/data/:/docker-entrypoint-initdb.d
@@ -262,8 +299,8 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   cd ..
   cd frontend
 
-  #npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$BASEDIR/Boilr/$CONFIG_FILE")-ts > /dev/null
-  pnpm create vite . --template $(jq -r '.frontend.framework' "$BASEDIR/Boilr/$CONFIG_FILE")-ts > /dev/null
+  #npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$BASEDIR/boilr/$CONFIG_FILE")-ts > /dev/null
+  pnpm create vite . --template $(jq -r '.frontend.framework' "$BASEDIR/boilr/$CONFIG_FILE")-ts > /dev/null
   
   pnpm install > /dev/null || { echo "Échec de npm install"; exit 1; }
   
@@ -275,23 +312,22 @@ fi
 progress_bar "Installation du frontend"
 
   # Lancer le serveur
-  cd ..
-  sudo docker compose up -d > /dev/null
-
-  progress_bar "Application en cours de lancement"
+  if jq -e '.backend.useDocker' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
+    cd ..
+    sudo docker compose up -d > /dev/null
+  else 
+    npm run dev > /dev/null &
+    sleep 2    
+  fi
+  
+progress_bar "Application en cours de lancement"
  
 fi
 
-cat <<'EOF'
-
- (      (         )  
- )\ )   )\ )   ( /(  
-(()/(  (()/(   )\()) 
- /(_))  /(_)) ((_)\  
-(_))_| (_))    _((_) 
-| |_   |_ _|  | \| | 
-| __|   | |   | .` | 
-|_|    |___|  |_|\_| 
-
-                        
+cat << "EOF"
+                                                
+ ___        
+|__  | |\ | 
+|    | | \| 
+            
 EOF
