@@ -1,5 +1,7 @@
 # 🚀 Boil'r
 
+L'outil ultime pour les multi projects lovers !!
+
 ![meme](src/meme.webp)
 
 
