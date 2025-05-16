@@ -1,4 +1,8 @@
-# 🚀 Boilr
+# 🚀 Boil'r
+
+![meme](/home/david/DEV/boilr/src/meme.webp)
+
+
 
 > Zero-to-working fullstack app generator – in one command.
 
