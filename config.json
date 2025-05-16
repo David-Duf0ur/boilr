@@ -1,9 +1,9 @@
 {
-  "baseDir": "/home/david/DEV",
+  "baseDir": "/home/david/DEV/old",
   "projectName": "mop",
   "prerequis": [
     "jq",
-    "pnpm",
+    "npm",
     "node",
     "docker"
   ],
@@ -31,6 +31,7 @@
       "typescript",
       "@types/pg"
     ],
+    "port": 3000,
     "useTypescript": true,
     "entryPoint": "server.ts",
     "useDocker": true
@@ -41,8 +42,8 @@
   },
   "database": {
     "type": "pg",
-    "name": "database",
-    "PG_URL": "postgres://root:root@database:5432/mydb",
+    "name": "db-user",
+    "PG_URL": "postgres://root:root@db-user:5432/mydb",
     "POSTGRES_USER": "root",
     "POSTGRES_PASSWORD": "root",
     "POSTGRES_DB": "mydb"

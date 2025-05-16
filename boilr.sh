@@ -31,19 +31,32 @@ EOF
 
 
 progress_bar() {
-  local message=$1
+  local message="$1"
+  local total_width=40       
+  local bar_length=30       
   local i=0
-  local max=30
-  echo -n "$message : ["
-  while [ $i -le $max ]; do
+
+  # Calcul du padding pour aligner le texte
+  local padding=$(printf '%*s' $((total_width - ${#message})) '')
+
+  # Affichage initial
+  echo -ne "${message}${padding}: ["
+  while [ $i -lt $bar_length ]; do
     echo -n "#"
-    sleep 0.05
+    sleep 0.03
     ((i++))
   done
   echo "] ✅"
 }
- 
-CONFIG_FILE="config.json"
+
+chmod +x boilr.sh
+
+# Retourne le chemin absolu qui contient ce script 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Retourne le chemin absolu du fichier de config
+CONFIG_FILE="$SCRIPT_DIR/config.json"
+
 RAW_NAME="$1"
 PROJECT_NAME="${RAW_NAME#--}"
 
@@ -109,8 +122,9 @@ progress_bar "Création de la structure"
 
 # Si le dossier backend est présent
 if echo "$STRUCTURE" | grep -q "backend"; then
-  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$BASEDIR/boilr/$CONFIG_FILE")
-  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$BASEDIR/boilr/$CONFIG_FILE")
+  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$CONFIG_FILE")
+  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$CONFIG_FILE")
+  PORT=$(jq -r '.backend.port' "$CONFIG_FILE")
 
   cd backend || exit
   npm init -y > /dev/null
@@ -123,7 +137,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Installation des dépendances"
 
   # Si Typescript est utilisé
-  if jq -e '.backend.useTypescript' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useTypescript' "$CONFIG_FILE" >/dev/null; then
     npm install -D typescript ts-node > /dev/null
     npx tsc --init > /dev/null
 
@@ -137,10 +151,10 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   fi
 
   npm install -D $BACKEND_DEPS_DEV > /dev/null
-  progress_bar "Installation des dépendances de développement"
+  progress_bar "Installation des devdépendances"
 
   # Création de la structure backend
-  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE")
+  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$CONFIG_FILE")
 
   for folder in $BACKEND_UNDER_FOLDER; do
     mkdir -p "$folder"
@@ -152,7 +166,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Mise en place de la structure dossier"
 
   # Si route existe, créer route.ts
-  if jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE" | grep -q "route"; then
+  if jq -r '.backend.structure[]' "$CONFIG_FILE" | grep -q "route"; then
     cat <<EOL > route/route.ts
 import { Router } from "express";
 import { client } from "../data/data.js";
@@ -169,7 +183,7 @@ EOL
   fi
 
   # Création du fichier server.ts
-  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$BASEDIR/boilr/$CONFIG_FILE")
+  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$CONFIG_FILE")
 
   cat <<EOL > "$ENTRY_FILE"
 import express from "express";
@@ -177,7 +191,7 @@ import cookieParser from "cookie-parser";
 import { router } from "./route/route.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = $PORT;
 
 app.use(cookieParser());
 app.use(express.json());
@@ -189,12 +203,12 @@ app.listen(PORT, () => {
 EOL
  
   # Si data est dans la structure backend
-  if jq -r '.backend.structure[]' "$BASEDIR/boilr/$CONFIG_FILE" | grep -q "data"; then
+  if jq -r '.backend.structure[]' "$CONFIG_FILE" | grep -q "data"; then
     cat <<EOL > data/data.ts
 import pg from "pg";
 const { Client } = pg;
 
-const client = new Client("$(jq -r '.database.PG_URL' "$BASEDIR/boilr/$CONFIG_FILE")");
+const client = new Client("$(jq -r '.database.PG_URL' "$CONFIG_FILE")");
 
 async function connectDB() {
   try {
@@ -242,7 +256,7 @@ EOL
   fi
 
   # Si Docker est activé
-  if jq -e '.backend.useDocker' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
   
     cat <<EOL > Dockerfile
 FROM node:22-alpine
@@ -256,7 +270,7 @@ CMD [ "npm", "run", "dev" ]
 EOL
 
   # Création du fichier docker-compose
-  DATABASE_NAME=$(jq -r '.database.name' "$BASEDIR/boilr/$CONFIG_FILE")
+  DATABASE_NAME=$(jq -r '.database.name' "$CONFIG_FILE")
 
     cat <<EOL > ../docker-compose.yml
 services:
@@ -272,7 +286,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - PG_URL=$(jq -r '.database.PG_URL' "$BASEDIR/boilr/$CONFIG_FILE")
+      - PG_URL=$(jq -r '.database.PG_URL' "$CONFIG_FILE")
     depends_on:
       - $DATABASE_NAME
 
@@ -280,9 +294,9 @@ services:
     image: postgres:17.2-alpine
     container_name: $DATABASE_NAME
     environment:
-      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$BASEDIR/boilr/$CONFIG_FILE")
-      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$BASEDIR/boilr/$CONFIG_FILE")
-      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$BASEDIR/boilr/$CONFIG_FILE")
+      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$CONFIG_FILE")
+      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$CONFIG_FILE")
+      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$CONFIG_FILE")
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/data/:/docker-entrypoint-initdb.d
@@ -298,21 +312,38 @@ EOL
 if echo "$STRUCTURE" | grep -q "frontend"; then
   cd ..
   cd frontend
+  
+  npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
+  
+  npm install > /dev/null || { echo "Échec de npm install"; exit 1; }
+  
+  LOG_FILE="vite.log"
 
-  #npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$BASEDIR/boilr/$CONFIG_FILE")-ts > /dev/null
-  pnpm create vite . --template $(jq -r '.frontend.framework' "$BASEDIR/boilr/$CONFIG_FILE")-ts > /dev/null
+  # Nettoyer le fichier log avant usage
+  : > "$LOG_FILE"
+
+  # Lancer Vite en arrière-plan, logs capturés
+  npm run dev > "$LOG_FILE" 2>&1 &
+
+  VITE_PID=$!
+
+  # Attente active que le port s'affiche
+  until grep -qE "http://localhost:[0-9]+" "$LOG_FILE"; do
+    sleep 0.2
+  done
+
+  # Extraction de l'URL des log
+  FRONTEND_URL=$(grep -oE "http://localhost:[0-9]+" "$LOG_FILE" | head -n1)
   
-  pnpm install > /dev/null || { echo "Échec de npm install"; exit 1; }
-  
-  pnpm run dev > /dev/null &
-  sleep 2
+  # Suppression du fichier provisoir de log
+  rm "$LOG_FILE"
 
 fi
 
 progress_bar "Installation du frontend"
 
   # Lancer le serveur
-  if jq -e '.backend.useDocker' "$BASEDIR/boilr/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
     cd ..
     sudo docker compose up -d > /dev/null
   else 
@@ -321,13 +352,21 @@ progress_bar "Installation du frontend"
   fi
   
 progress_bar "Application en cours de lancement"
+
+echo " "
  
 fi
 
+echo "🌐 Backend lancé sur : http://localhost:$PORT"
+echo "🌐 Frontend lancé sur : $FRONTEND_URL"
+
 cat << "EOF"
-                                                
- ___        
-|__  | |\ | 
-|    | | \| 
+
+────────────────────────────────────────────                                                
+              ___        
+              |__  | |\ | 
+              |    | | \| 
+
+────────────────────────────────────────────
             
 EOF
