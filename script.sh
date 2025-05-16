@@ -72,8 +72,8 @@ progress_bar "Création de la structure"
 
 # Si le dossier backend est présent
 if echo "$STRUCTURE" | grep -q "backend"; then
-  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$BASEDIR/Boilerplate/$CONFIG_FILE")
-  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+  BACKEND_DEPS=$(jq -r '.backend.dependencies[]' "$BASEDIR/Boilr/$CONFIG_FILE")
+  BACKEND_DEPS_DEV=$(jq -r '.backend.devDependencies[]' "$BASEDIR/Boilr/$CONFIG_FILE")
 
   cd backend || exit
   npm init -y > /dev/null
@@ -86,7 +86,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Installation des dépendances"
 
   # Si Typescript est utilisé
-  if jq -e '.backend.useTypescript' "$BASEDIR/Boilerplate/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useTypescript' "$BASEDIR/Boilr/$CONFIG_FILE" >/dev/null; then
     npm install -D typescript ts-node > /dev/null
     npx tsc --init > /dev/null
 
@@ -103,7 +103,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Installation des dépendances de développement"
 
   # Création de la structure backend
-  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+  BACKEND_UNDER_FOLDER=$(jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE")
 
   for folder in $BACKEND_UNDER_FOLDER; do
     mkdir -p "$folder"
@@ -115,7 +115,7 @@ if echo "$STRUCTURE" | grep -q "backend"; then
   progress_bar "Mise en place de la structure dossier"
 
   # Si route existe, créer route.ts
-  if jq -r '.backend.structure[]' "$BASEDIR/Boilerplate/$CONFIG_FILE" | grep -q "route"; then
+  if jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE" | grep -q "route"; then
     cat <<EOL > route/route.ts
 import { Router } from "express";
 import { client } from "../data/data.js";
@@ -132,7 +132,7 @@ EOL
   fi
 
   # Création du fichier server.ts
-  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+  ENTRY_FILE=$(jq -r '.backend.entryPoint' "$BASEDIR/Boilr/$CONFIG_FILE")
 
   cat <<EOL > "$ENTRY_FILE"
 import express from "express";
@@ -152,12 +152,12 @@ app.listen(PORT, () => {
 EOL
  
   # Si data est dans la structure backend
-  if jq -r '.backend.structure[]' "$BASEDIR/Boilerplate/$CONFIG_FILE" | grep -q "data"; then
+  if jq -r '.backend.structure[]' "$BASEDIR/Boilr/$CONFIG_FILE" | grep -q "data"; then
     cat <<EOL > data/data.ts
 import pg from "pg";
 const { Client } = pg;
 
-const client = new Client("$(jq -r '.database.PG_URL' "$BASEDIR/Boilerplate/$CONFIG_FILE")");
+const client = new Client("$(jq -r '.database.PG_URL' "$BASEDIR/Boilr/$CONFIG_FILE")");
 
 async function connectDB() {
   try {
@@ -205,7 +205,7 @@ EOL
   fi
 
   # Si Docker est activé
-  if jq -e '.backend.useDocker' "$BASEDIR/Boilerplate/$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useDocker' "$BASEDIR/Boilr/$CONFIG_FILE" >/dev/null; then
   
     cat <<EOL > Dockerfile
 FROM node:22-alpine
@@ -219,7 +219,7 @@ CMD [ "npm", "run", "dev" ]
 EOL
 
   # Création du fichier server.ts
-  DATABASE_NAME=$(jq -r '.database.name' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+  DATABASE_NAME=$(jq -r '.database.name' "$BASEDIR/Boilr/$CONFIG_FILE")
 
     cat <<EOL > ../docker-compose.yml
 services:
@@ -235,7 +235,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - PG_URL=$(jq -r '.database.PG_URL' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+      - PG_URL=$(jq -r '.database.PG_URL' "$BASEDIR/Boilr/$CONFIG_FILE")
     depends_on:
       - $DATABASE_NAME
 
@@ -243,9 +243,9 @@ services:
     image: postgres:17.2-alpine
     container_name: $DATABASE_NAME
     environment:
-      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$BASEDIR/Boilerplate/$CONFIG_FILE")
-      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$BASEDIR/Boilerplate/$CONFIG_FILE")
-      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$BASEDIR/Boilerplate/$CONFIG_FILE")
+      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$BASEDIR/Boilr/$CONFIG_FILE")
+      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$BASEDIR/Boilr/$CONFIG_FILE")
+      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$BASEDIR/Boilr/$CONFIG_FILE")
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/data/:/docker-entrypoint-initdb.d
@@ -262,8 +262,8 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   cd ..
   cd frontend
 
-  #npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$BASEDIR/Boilerplate/$CONFIG_FILE")-ts > /dev/null
-  pnpm create vite . --template $(jq -r '.frontend.framework' "$BASEDIR/Boilerplate/$CONFIG_FILE")-ts > /dev/null
+  #npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$BASEDIR/Boilr/$CONFIG_FILE")-ts > /dev/null
+  pnpm create vite . --template $(jq -r '.frontend.framework' "$BASEDIR/Boilr/$CONFIG_FILE")-ts > /dev/null
   
   pnpm install > /dev/null || { echo "Échec de npm install"; exit 1; }
   
