@@ -1,6 +1,6 @@
 # 🚀 Boil'r
 
-![meme](/home/david/DEV/boilr/src/meme.webp)
+![meme](src/meme.webp)
 
 
 
