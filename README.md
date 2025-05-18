@@ -29,7 +29,7 @@ Boilr part d’un principe simple : *"Why waste time setting up your stack when 
 
 ```json
 {
-  "baseDir": "/home/david/DEV",
+  "baseDir": "/home/david/DEV", //Chemin absolue
   "projectName": "Alpha",
   "structure": ["backend", "frontend"],
   "backend": {
@@ -63,6 +63,10 @@ Avant d’utiliser **Boilr**, assurez-vous d’avoir les éléments suivants ins
   sudo apt install jq
   ```
 
+Pour cette version il vous faudra égalememnt NPM, Docker et Node.
+
+Une ditribution linux.
+
 ### Cloner le repo et lancer le script
 
 ```bash
@@ -70,7 +74,7 @@ git clone https://github.com/David-Duf0ur/boilr
 
 cd boilr
 
-./boilr.sh
+bash boilr.sh --projectName
 ```
 
 

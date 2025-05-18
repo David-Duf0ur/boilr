@@ -49,6 +49,49 @@ progress_bar() {
   echo "] ✅"
 }
 
+progress_bar_2 () {
+  local cmd="$1"                 # commande à exécuter
+  local message="$2"             # libellé à afficher
+
+  local total_width=40           # largeur texte + padding
+  local bar_length=30            # nombre de # à afficher
+  local i=0
+
+  # Calcule le padding pour que le ':' soit à la 41ᵉ colonne
+  local padding=$(printf '%*s' $((total_width - ${#message})) '')
+
+  # Affichage du début de ligne
+  printf "%s%s: [" "$message" "$padding"
+
+  # Lance la commande en arrière‑plan
+  bash -c "$cmd" &>/dev/null &
+  local pid=$!
+
+  # Remplit la barre tant que le processus tourne
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( i < bar_length )); then
+      printf "#"
+      ((i++))
+    fi
+    sleep 0.2
+  done
+
+  # Termine la barre si elle n’est pas pleine
+  while (( i < bar_length )); do
+    printf "#"
+    ((i++))
+  done
+
+  printf "] "          # crochet fermant + espace
+  wait "$pid"          # récupère le code retour
+  if (( $? == 0 )); then
+    printf "✅\n"
+  else
+    printf "❌\n"
+    return 1
+  fi
+}
+
 chmod +x boilr.sh
 
 # Retourne le chemin absolu qui contient ce script 
@@ -100,6 +143,7 @@ fi
 # Création des variables nécessaires à la création du projet
 PROJECT_NAME=$(jq -r '.projectName' "$CONFIG_FILE")
 STRUCTURE=$(jq -r '.structure[]' "$CONFIG_FILE")
+
 BASEDIR=$(jq -r '.baseDir' "$CONFIG_FILE")
 
 # Création du répertoire racine du projet
@@ -180,7 +224,7 @@ router.get("/", async (req, res)=> {
 
 export { router };
 EOL
-  fi
+  fi #if Route dans backend
 
   # Création du fichier server.ts
   ENTRY_FILE=$(jq -r '.backend.entryPoint' "$CONFIG_FILE")
@@ -253,7 +297,7 @@ VALUES
 
 COMMIT;
 EOL
-  fi
+  fi #if Data dans backend
 
   # Si Docker est activé
   if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
@@ -306,7 +350,8 @@ volumes:
 
 EOL
 
-  fi
+  fi #if Docker
+fi #if Backend
 
 # Si le dossier frontend est présent
 if echo "$STRUCTURE" | grep -q "frontend"; then
@@ -315,7 +360,7 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
   
-  npm install > /dev/null || { echo "Échec de npm install"; exit 1; }
+  progress_bar_2 "npm install --silent" "Installation du front"
   
   LOG_FILE="vite.log"
 
@@ -338,24 +383,20 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   # Suppression du fichier provisoir de log
   rm "$LOG_FILE"
 
+fi #if Frontend
+
+# Lancer le serveur
+if jq -e '.backend.useDocker' "$CONFIG_FILE" > /dev/null; then
+  cd ..
+  progress_bar_2 "docker compose up -d &> /dev/null" "Démarrage des conteneurs"
+else 
+  npm run dev > /dev/null &
+  sleep 2    
 fi
-
-progress_bar "Installation du frontend"
-
-  # Lancer le serveur
-  if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
-    cd ..
-    sudo docker compose up -d > /dev/null
-  else 
-    npm run dev > /dev/null &
-    sleep 2    
-  fi
   
 progress_bar "Application en cours de lancement"
 
-echo " "
- 
-fi
+echo " " 
 
 echo "🌐 Backend lancé sur : http://localhost:$PORT"
 echo "🌐 Frontend lancé sur : $FRONTEND_URL"

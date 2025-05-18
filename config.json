@@ -1,5 +1,5 @@
 {
-  "baseDir": "/home/david/DEV/old",
+  "baseDir": "/home/david/DEV",
   "projectName": "mop",
   "prerequis": [
     "jq",
