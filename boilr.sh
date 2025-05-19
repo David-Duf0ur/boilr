@@ -360,12 +360,38 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
   
-  progress_bar_2 "npm install --silent" "Installation du front"
+  progress_bar_2 "npm install --silent" "Installation du front (~ 3/4 min)"
   
   LOG_FILE="vite.log"
 
   # Nettoyer le fichier log avant usage
   : > "$LOG_FILE"
+
+  # Changement de la page App
+  cd src
+  rm -rf App.tsx App.css
+
+  cat <<EOL > App.tsx
+export default function App() {
+  
+  return (
+    <>
+      <div>
+		  <h1>BOIL'R</h1>
+      <p>L'outil ultime pour les multi projects lovers !!</p>
+      <button>User</button>
+      <p>Json de USER</p>
+      </div>      
+    </>
+  )
+}
+
+EOL
+
+cat <<EOL > App.css
+test2
+EOL
+
 
   # Lancer Vite en arrière-plan, logs capturés
   npm run dev > "$LOG_FILE" 2>&1 &
