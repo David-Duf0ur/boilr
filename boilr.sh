@@ -395,11 +395,14 @@ const fetchUser = async () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white shadow-xl rounded-2xl p-8 max-w-xl w-full text-center space-y-6">
-        <h1 className="text-4xl font-bold text-red-500 flex items-center gap-2">
-          <img src={boilrLogo} alt="Logo Boil'r" className="w-3xs" />
+      <div className="flex flex-col items-center bg-white shadow-xl rounded-2xl p-8 max-w-xl w-full text-center space-y-6">
+        
+        <img src={boilrLogo} alt="Logo Boil'r" className="w-16 mx-auto mb-0" />
+
+        <h1 className="text-4xl font-bold text-red-500">
           BOIL'R
         </h1>
+
         <p className="text-gray-700 text-lg">
           L'outil ultime pour les <span className="font-semibold text-red-400">multi-projects lovers</span> 🚀
         </p>
@@ -412,20 +415,23 @@ const fetchUser = async () => {
         </button>
 
         {data && (
-		  <>
-			<div className="text-left bg-gray-100 rounded-lg p-4 max-h-64 overflow-auto">
-			  <pre className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-				{JSON.stringify(data, null, 2)}
-			  </pre>
-			</div>
-			<button
-			  onClick={() => setData(null)}
-			  className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 shadow"
-			>
-			  Clear
-			</button>
-		  </>
-		)}       
+          <div className="w-full space-y-4">
+            <div className="text-left bg-gray-100 rounded-lg p-4 max-h-64 overflow-auto">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
+            <div className="text-center">
+              <button
+                onClick={() => setData(null)}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 shadow"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
@@ -552,8 +558,7 @@ progress_bar "Application en cours de lancement"
 
 echo " " 
 
-# echo "🌐 Backend lancé sur : http://localhost:$PORT"
-# echo "🌐 Frontend lancé sur : $FRONTEND_URL"
+echo "🌐 Application lancé sur : http://localhost:5173"
 
 cat << "EOF"
 
