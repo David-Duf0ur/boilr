@@ -314,11 +314,13 @@ fi #if Backend
 if echo "$STRUCTURE" | grep -q "frontend"; then
   cd ..
   cd frontend
-  
+   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
-  
-  #progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 4/5 min)"
-  #progress_bar_2 "npm install --silent" "Installation du front (~ 1 min)"
+ 
+  cp "$BASEDIR/boilr/src/boilr.png" "$BASEDIR/$PROJECT_NAME/frontend/src/assets/"
+  cp "$BASEDIR/boilr/src/boilr_fav.png" "$BASEDIR/$PROJECT_NAME/frontend/src/assets/"
+
+
   (
     seconds=0
     while true; do
@@ -341,6 +343,12 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
 
   # Nettoyer le fichier log avant usage
   : > "$LOG_FILE"
+
+  #Nommage de l'onglet de la page & favicon
+  sed -i 's|<title>.*</title>|<title>Boil'"'"'r</title>|' index.html
+  sed -i 's|<link rel="icon[^>]*>|<link rel="icon" type="image/png" href="./src/assets/boilr_fav.png" />|' index.html
+
+
 
   # Changement de la page App
   cd src
@@ -370,6 +378,7 @@ EOL
   cat <<EOL > App.tsx
 import './App.css'
 import { useState } from 'react'
+import boilrLogo from './assets/boilr.png'
 
 export default function App() {
 const [data, setData] = useState(null)
@@ -387,7 +396,10 @@ const fetchUser = async () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="bg-white shadow-xl rounded-2xl p-8 max-w-xl w-full text-center space-y-6">
-        <h1 className="text-4xl font-bold text-red-500">🔥 BOIL'R</h1>
+        <h1 className="text-4xl font-bold text-red-500 flex items-center gap-2">
+          <img src={boilrLogo} alt="Logo Boil'r" className="w-3xs" />
+          BOIL'R
+        </h1>
         <p className="text-gray-700 text-lg">
           L'outil ultime pour les <span className="font-semibold text-red-400">multi-projects lovers</span> 🚀
         </p>
