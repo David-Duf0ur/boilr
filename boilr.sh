@@ -22,7 +22,7 @@ cat << "EOF"
 📅 Date      : 16 Mai 2025
 🧽 Objet     : Generer une app fullstack 💡
 🛠️ Usage     : ./boilr.sh --projectName
-⚙️ Dépend    : bash, jq
+⚙️ Dépend    : bash, jq, node, docker, npm
 🚀 Version   : 1.0.0
 ────────────────────────────────────────────
 
@@ -307,60 +307,7 @@ VALUES
 
 COMMIT;
 EOL
-  fi #if Data dans backend
-
-  # Si Docker est activé
-  if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
-  
-    cat <<EOL > Dockerfile
-FROM node:22-alpine
-RUN mkdir -p /backend
-WORKDIR /backend
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD [ "npm", "run", "dev" ]
-EOL
-
-  # Création du fichier docker-compose
-  DATABASE_NAME=$(jq -r '.database.name' "$CONFIG_FILE")
-
-    cat <<EOL > ../docker-compose.yml
-services:
-
-  backend:
-    container_name: backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    volumes:
-      - ./backend:/backend
-      - /backend/node_modules
-    ports:
-      - "3000:3000"
-    environment:
-      - PG_URL=$(jq -r '.database.PG_URL' "$CONFIG_FILE")
-    depends_on:
-      - $DATABASE_NAME
-
-  $DATABASE_NAME:
-    image: postgres:17.2-alpine
-    container_name: $DATABASE_NAME
-    environment:
-      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$CONFIG_FILE")
-      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$CONFIG_FILE")
-      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$CONFIG_FILE")
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/data/:/docker-entrypoint-initdb.d
-
-volumes:
-  pgdata:
-
-EOL
-
-  fi #if Docker
+  fi #if Data dans backend  
 fi #if Backend
 
 # Si le dossier frontend est présent
@@ -370,8 +317,8 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
   
-  progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 3/4 min)"
-  progress_bar_2 "npm install --silent" "Installation du front (~ 3/4 min)"
+  progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 4/5 min)"
+  progress_bar_2 "npm install --silent" "Installation du front (~ 1 min)"
 
   
   LOG_FILE="vite.log"
@@ -459,11 +406,11 @@ const fetchUser = async () => {
 EOL
 
   # Si Docker est activé
-  if jq -e '.frontend.useDocker' "$CONFIG_FILE" >/dev/null; then
+  if jq -e '.backend.useDocker' "$CONFIG_FILE" >/dev/null; then
   cd ..
 
     cat <<EOL > Dockerfile
-FROM node:20-alpine
+FROM node:22-alpine
 RUN mkdir -p /frontend
 WORKDIR /frontend
 COPY package*.json .
@@ -472,31 +419,95 @@ COPY . .
 EXPOSE 5173
 CMD ["npm", "run", "dev"]
 EOL
-  fi
-  
-  #modifier le docker compose pour ajouter le conteneur frontend
 
+  jq '.scripts.dev = "vite --host"' package.json > tmp.json && mv tmp.json package.json
+
+  cd .. 
+  cd backend
+    cat <<EOL > Dockerfile
+FROM node:22-alpine
+RUN mkdir -p /backend
+WORKDIR /backend
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD [ "npm", "run", "dev" ]
+EOL
+
+  # Création du fichier docker-compose
+  DATABASE_NAME=$(jq -r '.database.name' "$CONFIG_FILE")
+
+    cat <<EOL > ../docker-compose.yml
+services:
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/backend
+      - /backend/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - PG_URL=$(jq -r '.database.PG_URL' "$CONFIG_FILE")
+    depends_on:
+      - $DATABASE_NAME
+
+  $DATABASE_NAME:
+    image: postgres:17.2-alpine
+    container_name: $DATABASE_NAME
+    environment:
+      - POSTGRES_USER=$(jq -r '.database.POSTGRES_USER' "$CONFIG_FILE")
+      - POSTGRES_PASSWORD=$(jq -r '.database.POSTGRES_PASSWORD' "$CONFIG_FILE")
+      - POSTGRES_DB=$(jq -r '.database.POSTGRES_DB' "$CONFIG_FILE")
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/data/:/docker-entrypoint-initdb.d
+    
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+
+EOL
+
+  fi #if Docker
 
   # Lancer Vite en arrière-plan, logs capturés
   if jq -e '.frontend.useDocker' "$CONFIG_FILE" >/dev/null; then
     #je ne fais rien à faire avec le compose final
-    npm run dev > "$LOG_FILE" 2>&1 &
+    #npm run dev > "$LOG_FILE" 2>&1 &
+    echo " "
   else
     npm run dev > "$LOG_FILE" 2>&1 &
+
+    VITE_PID=$!
+
+    # Attente active que le port s'affiche
+    until grep -qE "http://localhost:[0-9]+" "$LOG_FILE"; do
+      sleep 0.2
+    done
+
+    # Extraction de l'URL des log
+    FRONTEND_URL=$(grep -oE "http://localhost:[0-9]+" "$LOG_FILE" | head -n1)
+    
+    # Suppression du fichier provisoir de log
+    rm "$LOG_FILE"
   fi
-
-  VITE_PID=$!
-
-  # Attente active que le port s'affiche
-  until grep -qE "http://localhost:[0-9]+" "$LOG_FILE"; do
-    sleep 0.2
-  done
-
-  # Extraction de l'URL des log
-  FRONTEND_URL=$(grep -oE "http://localhost:[0-9]+" "$LOG_FILE" | head -n1)
-  
-  # Suppression du fichier provisoir de log
-  rm "$LOG_FILE"
 
 fi #if Frontend
 
@@ -513,8 +524,8 @@ progress_bar "Application en cours de lancement"
 
 echo " " 
 
-echo "🌐 Backend lancé sur : http://localhost:$PORT"
-echo "🌐 Frontend lancé sur : $FRONTEND_URL"
+# echo "🌐 Backend lancé sur : http://localhost:$PORT"
+# echo "🌐 Frontend lancé sur : $FRONTEND_URL"
 
 cat << "EOF"
 
