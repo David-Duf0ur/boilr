@@ -93,6 +93,7 @@ progress_bar_2 () {
 }
 
 chmod +x boilr.sh
+bash clear.sh
 
 # Retourne le chemin absolu qui contient ce script 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -217,7 +218,7 @@ import { client } from "../data/data.js";
 
 const router = Router();
 
-router.get("/", async (req, res)=> { 
+router.get("/user", async (req, res)=> { 
   const result = await client.query("SELECT * FROM users");
   res.json(result.rows);
 })
@@ -232,11 +233,20 @@ EOL
   cat <<EOL > "$ENTRY_FILE"
 import express from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors"
 import { router } from "./route/route.js";
 
 const app = express();
 const PORT = $PORT;
 
+const corsOptions = {			
+		origin: "http://localhost:5173",
+		methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+		allowedHeaders: ['Content-Type', 'Authorization'],
+		credentials: true,
+	}
+
+app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 app.use(router);
@@ -360,7 +370,9 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
   
+  progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 3/4 min)"
   progress_bar_2 "npm install --silent" "Installation du front (~ 3/4 min)"
+
   
   LOG_FILE="vite.log"
 
@@ -369,32 +381,109 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
 
   # Changement de la page App
   cd src
-  rm -rf App.tsx App.css
+  rm -rf App.tsx App.css ../vite.config.ts index.css
+
+  cat <<EOL > ../vite.config.ts
+import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+})
+EOL
+
+  cat <<EOL > App.css
+@import "tailwindcss";
+EOL
+
+  cat <<EOL > index.css
+@import "tailwindcss";
+EOL
+
 
   cat <<EOL > App.tsx
+import './App.css'
+import { useState } from 'react'
+
 export default function App() {
-  
+const [data, setData] = useState(null)
+
+const fetchUser = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/user")
+      const dataFetch = await response.json()
+      setData(dataFetch)
+    } catch (error) {
+      console.error("Erreur lors de la récupération :", error)
+    }
+  }
+
   return (
-    <>
-      <div>
-		  <h1>BOIL'R</h1>
-      <p>L'outil ultime pour les multi projects lovers !!</p>
-      <button>User</button>
-      <p>Json de USER</p>
-      </div>      
-    </>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="bg-white shadow-xl rounded-2xl p-8 max-w-xl w-full text-center space-y-6">
+        <h1 className="text-4xl font-bold text-red-500">🔥 BOIL'R</h1>
+        <p className="text-gray-700 text-lg">
+          L'outil ultime pour les <span className="font-semibold text-red-400">multi-projects lovers</span> 🚀
+        </p>
+
+        <button
+          onClick={fetchUser}
+          className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 shadow"
+        >
+          Récupérer l'utilisateur
+        </button>
+
+        {data && (
+		  <>
+			<div className="text-left bg-gray-100 rounded-lg p-4 max-h-64 overflow-auto">
+			  <pre className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+				{JSON.stringify(data, null, 2)}
+			  </pre>
+			</div>
+			<button
+			  onClick={() => setData(null)}
+			  className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-300 shadow"
+			>
+			  Clear
+			</button>
+		  </>
+		)}       
+      </div>
+    </div>
   )
 }
 
 EOL
 
-cat <<EOL > App.css
-test2
+  # Si Docker est activé
+  if jq -e '.frontend.useDocker' "$CONFIG_FILE" >/dev/null; then
+  cd ..
+
+    cat <<EOL > Dockerfile
+FROM node:20-alpine
+RUN mkdir -p /frontend
+WORKDIR /frontend
+COPY package*.json .
+RUN npm i
+COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev"]
 EOL
+  fi
+  
+  #modifier le docker compose pour ajouter le conteneur frontend
 
 
   # Lancer Vite en arrière-plan, logs capturés
-  npm run dev > "$LOG_FILE" 2>&1 &
+  if jq -e '.frontend.useDocker' "$CONFIG_FILE" >/dev/null; then
+    #je ne fais rien à faire avec le compose final
+    npm run dev > "$LOG_FILE" 2>&1 &
+  else
+    npm run dev > "$LOG_FILE" 2>&1 &
+  fi
 
   VITE_PID=$!
 

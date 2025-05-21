@@ -21,7 +21,8 @@
     "dependencies": [
       "express",
       "cookie-parser",
-      "pg"
+      "pg",
+      "cors"
     ],
     "devDependencies": [
       "concurrently",
@@ -29,7 +30,8 @@
       "@types/express",
       "ts-node",
       "typescript",
-      "@types/pg"
+      "@types/pg",
+      "@types/cors"
     ],
     "port": 3000,
     "useTypescript": true,
@@ -38,7 +40,8 @@
   },
   "frontend": {
     "framework": "react",
-    "frameworkCSS": "tailwind"
+    "frameworkCSS": "tailwind",
+    "useDocker": true
   },
   "database": {
     "type": "pg",
