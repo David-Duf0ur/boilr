@@ -317,9 +317,25 @@ if echo "$STRUCTURE" | grep -q "frontend"; then
   
   npm create vite@latest . -- --template $(jq -r '.frontend.framework' "$CONFIG_FILE")-ts > /dev/null
   
-  progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 4/5 min)"
-  progress_bar_2 "npm install --silent" "Installation du front (~ 1 min)"
+  #progress_bar_2 "npm install tailwindcss @tailwindcss/vite --silent" "Installation Tailwind (~ 4/5 min)"
+  #progress_bar_2 "npm install --silent" "Installation du front (~ 1 min)"
+  (
+    seconds=0
+    while true; do
+      printf "\r⏳ Installation en cours... %ds écoulées" "$seconds"
+      sleep 1
+      ((seconds++))
+    done
+  ) &
+  TIMER_PID=$!
 
+  npm install tailwindcss @tailwindcss/vite --silent
+
+  kill $TIMER_PID >/dev/null 2>&1
+  wait $TIMER_PID 2>/dev/null
+
+  # Fin propre
+  echo -e "\n✅ Installation du frontend terminée !"  
   
   LOG_FILE="vite.log"
 
